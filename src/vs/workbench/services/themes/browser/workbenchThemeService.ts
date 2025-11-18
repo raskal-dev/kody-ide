@@ -33,7 +33,6 @@ import { updateColorThemeConfigurationSchemas, updateFileIconThemeConfigurationS
 import { ProductIconThemeData, DEFAULT_PRODUCT_ICON_THEME_ID } from './productIconThemeData.js';
 import { registerProductIconThemeSchemas } from '../common/productIconThemeSchema.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
-import { isWeb } from '../../../../base/common/platform.js';
 import { ColorScheme, ThemeTypeSelector } from '../../../../platform/theme/common/theme.js';
 import { IHostColorSchemeService } from '../common/hostColorSchemeService.js';
 import { RunOnceScheduler, Sequencer } from '../../../../base/common/async.js';
@@ -153,7 +152,8 @@ export class WorkbenchThemeService extends Disposable implements IWorkbenchTheme
 			}
 		}
 		if (!themeData) {
-			const colorScheme = this.settings.getPreferredColorScheme() ?? (isWeb ? ColorScheme.LIGHT : ColorScheme.DARK);
+			// KODY: Force dark theme by default
+			const colorScheme = this.settings.getPreferredColorScheme() ?? ColorScheme.DARK;
 			themeData = ColorThemeData.createUnloadedThemeForThemeType(colorScheme, defaultColorMap);
 		}
 		themeData.setCustomizations(this.settings);
@@ -204,7 +204,8 @@ export class WorkbenchThemeService extends Disposable implements IWorkbenchTheme
 				// If the current theme is not available, first make sure setting sync is complete
 				await this.userDataInitializationService.whenInitializationFinished();
 				// try to get the theme again, now with a fallback to the default themes
-				const fallbackTheme = this.currentColorTheme.type === ColorScheme.LIGHT ? ThemeSettingDefaults.COLOR_THEME_LIGHT : ThemeSettingDefaults.COLOR_THEME_DARK;
+				// KODY: Force dark theme as fallback
+				const fallbackTheme = ThemeSettingDefaults.COLOR_THEME_DARK;
 				theme = this.colorThemeRegistry.findThemeBySettingsId(this.settings.colorTheme, fallbackTheme);
 			}
 			return this.setColorTheme(theme && theme.id, undefined);

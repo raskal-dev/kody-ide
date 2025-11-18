@@ -1,0 +1,46 @@
+# Maintainer: KODY IDE Team <team@kody-ide.com>
+pkgname=kody-ide
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="IDE intelligent basé sur VSCode avec intégration IA (OpenRouter, OpenAI, Anthropic, etc.)"
+arch=('x86_64')
+url="https://github.com/kody-ide/kody-ide"
+license=('MIT')
+depends=(
+    'gtk3'
+    'libxss'
+    'libasound2'
+    'nss'
+    'libdrm'
+    'mesa'
+    'libsecret'
+)
+provides=('kody')
+conflicts=('kody')
+source=("kody-ide-${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+    cd "$srcdir"
+    
+    # Installer les fichiers
+    install -dm755 "$pkgdir/opt/kody-ide"
+    cp -r kody-ide/* "$pkgdir/opt/kody-ide/"
+    
+    # Créer le lien symbolique dans /usr/bin
+    install -dm755 "$pkgdir/usr/bin"
+    ln -s /opt/kody-ide/bin/code "$pkgdir/usr/bin/kody"
+    
+    # Installer le fichier .desktop
+    install -dm755 "$pkgdir/usr/share/applications"
+    install -m644 kody-ide.desktop "$pkgdir/usr/share/applications/"
+    
+    # Installer l'icône
+    install -dm755 "$pkgdir/usr/share/pixmaps"
+    install -m644 kody-ide.png "$pkgdir/usr/share/pixmaps/"
+    
+    # Installer l'icône dans hicolor
+    install -dm755 "$pkgdir/usr/share/icons/hicolor/512x512/apps"
+    install -m644 kody-ide.png "$pkgdir/usr/share/icons/hicolor/512x512/apps/kody-ide.png"
+}
+

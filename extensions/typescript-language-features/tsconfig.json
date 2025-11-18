@@ -8,7 +8,8 @@
 		"esModuleInterop": true,
 		"types": [
 			"node"
-		]
+		],
+		"skipLibCheck": true
 	},
 	"include": [
 		"src/**/*",
@@ -18,5 +19,8 @@
 		"../../src/vscode-dts/vscode.proposed.multiDocumentHighlightProvider.d.ts",
 		"../../src/vscode-dts/vscode.proposed.workspaceTrust.d.ts",
 		"../../src/vscode-dts/vscode.proposed.editorHoverVerbosityLevel.d.ts",
+	],
+	"exclude": [
+		"node_modules/@vscode/sync-api-client/lib/vscode.d.ts"
 	]
 }

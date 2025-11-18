@@ -15,6 +15,7 @@
 		"forceConsistentCasingInFileNames": true,
 		"target": "ES2024",
 		"useDefineForClassFields": false,
+		"skipLibCheck": true,
 		"lib": [
 			"ES2024",
 			"DOM",
