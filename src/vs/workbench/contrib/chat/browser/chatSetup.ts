@@ -218,7 +218,7 @@ class SetupAgent extends Disposable implements IChatAgentImplementation {
 		return { agent, disposable: disposables };
 	}
 
-	private static readonly SETUP_NEEDED_MESSAGE = new MarkdownString(localize('settingUpCopilotNeeded', "You need to set up GitHub Copilot and be signed in to use Chat."));
+	private static readonly SETUP_NEEDED_MESSAGE = new MarkdownString(localize('settingUpCopilotNeeded', "You need to configure KODY AI service to use Chat. Use the command 'KODY: Configure AI Service' to set up your API key."));
 	private static readonly TRUST_NEEDED_MESSAGE = new MarkdownString(localize('trustNeeded', "You need to trust this workspace to use Chat."));
 
 	private readonly _onUnresolvableError = this._register(new Emitter<void>());
