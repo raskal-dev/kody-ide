@@ -1,7 +1,7 @@
-/**
- * Contribution KODY pour VSCode
- * Ce fichier enregistre toutes les contributions KODY dans le workbench VSCode
- */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) KODY IDE. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
 
 import { WorkbenchPhase, registerWorkbenchContribution2 } from '../../../common/contributions.js';
 import { KodyService } from './kodyService.js';

@@ -1,7 +1,7 @@
-/**
- * Chat Agent KODY pour remplacer Copilot
- * Utilise les services IA KODY (OpenRouter, OpenAI, Anthropic)
- */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) KODY IDE. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
 
 import { IWorkbenchContribution } from '../../../common/contributions.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
