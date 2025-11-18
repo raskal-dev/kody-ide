@@ -7,6 +7,11 @@ import { WorkbenchPhase, registerWorkbenchContribution2 } from '../../../common/
 import { KodyService } from './kodyService.js';
 import { KodyCommands } from './kodyCommands.js';
 import { KodyActions } from './kodyActions.js';
+import { KodyConfiguration } from './kodyConfiguration.js';
+import { KodyChatAgent } from './kodyChatAgent.js';
+
+// Enregistrer la configuration
+registerWorkbenchContribution2(KodyConfiguration.ID, KodyConfiguration, WorkbenchPhase.BlockStartup);
 
 // Enregistrer le service KODY
 registerWorkbenchContribution2(KodyService.ID, KodyService, WorkbenchPhase.BlockRestore);
@@ -16,3 +21,6 @@ registerWorkbenchContribution2(KodyCommands.ID, KodyCommands, WorkbenchPhase.Blo
 
 // Enregistrer les actions (menus, commandes)
 registerWorkbenchContribution2(KodyActions.ID, KodyActions, WorkbenchPhase.BlockRestore);
+
+// Enregistrer le chat agent KODY (remplace Copilot)
+registerWorkbenchContribution2(KodyChatAgent.ID, KodyChatAgent, WorkbenchPhase.BlockRestore);

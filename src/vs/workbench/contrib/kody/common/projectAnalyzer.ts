@@ -1,16 +1,17 @@
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
-import * as fs from 'fs';
-import * as path from 'path';
+import { IFileService } from '../../../../platform/files/common/files.js';
+import { URI } from '../../../../base/common/uri.js';
 import { ProjectAnalysis, FileStructure } from './types.js';
 
 export class ProjectAnalyzer {
-  private workspaceRoot: string | undefined;
+  private workspaceRoot: URI | undefined;
 
   constructor(
-    private readonly workspaceService: IWorkspaceContextService
+    private readonly workspaceService: IWorkspaceContextService,
+    private readonly fileService: IFileService
   ) {
     const workspaceFolders = this.workspaceService.getWorkspace().folders;
-    this.workspaceRoot = workspaceFolders[0]?.uri.fsPath;
+    this.workspaceRoot = workspaceFolders[0]?.uri;
   }
 
   /**
@@ -61,26 +62,34 @@ export class ProjectAnalyzer {
       '.env',
     ];
 
-    const walkDir = async (dir: string, isRoot: boolean = false): Promise<void> => {
+    const walkDir = async (dir: URI, isRoot: boolean = false): Promise<void> => {
       try {
-        const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+        const stat = await this.fileService.resolve(dir);
+        
+        if (!stat.children) {
+          return;
+        }
 
-        for (const entry of entries) {
-          const fullPath = path.join(dir, entry.name);
-          const relativePath = path.relative(this.workspaceRoot!, fullPath);
+        for (const child of stat.children) {
+          // Calculer le chemin relatif manuellement
+          const workspacePath = this.workspaceRoot!.fsPath;
+          const childPath = child.resource.fsPath;
+          const relativePath = childPath.startsWith(workspacePath)
+            ? childPath.substring(workspacePath.length + 1) // +1 pour le séparateur
+            : childPath;
 
           // Ignorer les patterns
           if (ignorePatterns.some(pattern => relativePath.includes(pattern))) {
             continue;
           }
 
-          if (entry.isDirectory()) {
+          if (child.isDirectory) {
             directories.push(relativePath);
-            await walkDir(fullPath, false);
+            await walkDir(child.resource, false);
           } else {
             files.push(relativePath);
             if (isRoot) {
-              rootFiles.push(entry.name);
+              rootFiles.push(child.name);
             }
           }
         }
@@ -135,7 +144,8 @@ export class ProjectAnalyzer {
 
     const structure = await this.analyzeStructure();
     for (const file of structure.files) {
-      const ext = path.extname(file).toLowerCase();
+      const lastDot = file.lastIndexOf('.');
+      const ext = lastDot >= 0 ? file.substring(lastDot).toLowerCase() : '';
       const lang = extensions.get(ext);
       if (lang) {
         languages.add(lang);
@@ -156,10 +166,11 @@ export class ProjectAnalyzer {
     const frameworks: string[] = [];
 
     // Vérifier package.json pour Node.js
-    const packageJsonPath = path.join(this.workspaceRoot, 'package.json');
-    if (fs.existsSync(packageJsonPath)) {
+    const packageJsonUri = URI.joinPath(this.workspaceRoot, 'package.json');
+    if (await this.fileService.exists(packageJsonUri)) {
       try {
-        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+        const content = await this.fileService.readFile(packageJsonUri);
+        const packageJson = JSON.parse(content.value.toString());
         const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
 
         if (deps.react) frameworks.push('React');
@@ -175,27 +186,27 @@ export class ProjectAnalyzer {
     }
 
     // Vérifier requirements.txt ou pyproject.toml pour Python
-    const requirementsPath = path.join(this.workspaceRoot, 'requirements.txt');
-    const pyprojectPath = path.join(this.workspaceRoot, 'pyproject.toml');
+    const requirementsUri = URI.joinPath(this.workspaceRoot, 'requirements.txt');
+    const pyprojectUri = URI.joinPath(this.workspaceRoot, 'pyproject.toml');
     
-    if (fs.existsSync(requirementsPath) || fs.existsSync(pyprojectPath)) {
+    if (await this.fileService.exists(requirementsUri) || await this.fileService.exists(pyprojectUri)) {
       try {
-        const content = fs.existsSync(requirementsPath)
-          ? fs.readFileSync(requirementsPath, 'utf-8')
-          : fs.readFileSync(pyprojectPath, 'utf-8');
+        const contentUri = await this.fileService.exists(requirementsUri) ? requirementsUri : pyprojectUri;
+        const content = await this.fileService.readFile(contentUri);
+        const contentStr = content.value.toString();
         
-        if (content.includes('fastapi')) frameworks.push('FastAPI');
-        if (content.includes('flask')) frameworks.push('Flask');
-        if (content.includes('django')) frameworks.push('Django');
-        if (content.includes('pytest')) frameworks.push('pytest');
+        if (contentStr.includes('fastapi')) frameworks.push('FastAPI');
+        if (contentStr.includes('flask')) frameworks.push('Flask');
+        if (contentStr.includes('django')) frameworks.push('Django');
+        if (contentStr.includes('pytest')) frameworks.push('pytest');
       } catch (error) {
         // Ignorer les erreurs
       }
     }
 
     // Vérifier Cargo.toml pour Rust
-    const cargoPath = path.join(this.workspaceRoot, 'Cargo.toml');
-    if (fs.existsSync(cargoPath)) {
+    const cargoUri = URI.joinPath(this.workspaceRoot, 'Cargo.toml');
+    if (await this.fileService.exists(cargoUri)) {
       frameworks.push('Rust/Cargo');
     }
 
@@ -213,10 +224,11 @@ export class ProjectAnalyzer {
     const dependencies: string[] = [];
 
     // Package.json
-    const packageJsonPath = path.join(this.workspaceRoot, 'package.json');
-    if (fs.existsSync(packageJsonPath)) {
+    const packageJsonUri = URI.joinPath(this.workspaceRoot, 'package.json');
+    if (await this.fileService.exists(packageJsonUri)) {
       try {
-        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+        const content = await this.fileService.readFile(packageJsonUri);
+        const packageJson = JSON.parse(content.value.toString());
         const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
         dependencies.push(...Object.keys(deps).slice(0, 10)); // Top 10
       } catch (error) {
@@ -260,12 +272,13 @@ export class ProjectAnalyzer {
    */
   public async getFileContent(filePath: string): Promise<string | null> {
     try {
-      const fullPath = this.workspaceRoot
-        ? path.join(this.workspaceRoot, filePath)
-        : filePath;
+      const fileUri = this.workspaceRoot
+        ? URI.joinPath(this.workspaceRoot, filePath)
+        : URI.file(filePath);
       
-      if (fs.existsSync(fullPath)) {
-        return fs.readFileSync(fullPath, 'utf-8');
+      if (await this.fileService.exists(fileUri)) {
+        const content = await this.fileService.readFile(fileUri);
+        return content.value.toString();
       }
     } catch (error) {
       // Ignorer les erreurs
