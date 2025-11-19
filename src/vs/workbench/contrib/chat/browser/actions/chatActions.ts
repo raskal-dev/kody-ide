@@ -53,7 +53,6 @@ import { IHostService } from '../../../../services/host/browser/host.js';
 import { IWorkbenchLayoutService, Parts } from '../../../../services/layout/browser/layoutService.js';
 import { IPreferencesService } from '../../../../services/preferences/common/preferences.js';
 import { IViewsService } from '../../../../services/views/common/viewsService.js';
-import { EXTENSIONS_CATEGORY, IExtensionsWorkbenchService } from '../../../extensions/common/extensions.js';
 import { SCMHistoryItemChangeRangeContentProvider, ScmHistoryItemChangeRangeUriFields } from '../../../scm/browser/scmHistoryChatContext.js';
 import { ISCMService } from '../../../scm/common/scm.js';
 import { IChatAgentResult, IChatAgentService } from '../../common/chatAgents.js';
@@ -68,7 +67,6 @@ import { IChatRequestViewModel, IChatResponseViewModel, isRequestVM } from '../.
 import { IChatWidgetHistoryService } from '../../common/chatWidgetHistoryService.js';
 import { AGENT_SESSIONS_VIEWLET_ID, ChatAgentLocation, ChatConfiguration, ChatModeKind } from '../../common/constants.js';
 import { ILanguageModelChatSelector, ILanguageModelsService } from '../../common/languageModels.js';
-import { CopilotUsageExtensionFeatureId } from '../../common/languageModelStats.js';
 import { ILanguageModelToolsService } from '../../common/languageModelToolsService.js';
 import { ILanguageModelToolsConfirmationService } from '../../common/languageModelToolsConfirmationService.js';
 import { ChatViewId, IChatWidget, IChatWidgetService, showChatView } from '../chat.js';
@@ -1382,46 +1380,21 @@ export function registerChatActions() {
 		}
 	});
 
-	registerAction2(class ShowExtensionsUsingCopilot extends Action2 {
+	registerAction2(class ConfigureKodyAI extends Action2 {
 
 		constructor() {
 			super({
-				id: 'workbench.action.chat.showExtensionsUsingCopilot',
-				title: localize2('showCopilotUsageExtensions', "Show Extensions using Copilot"),
+				id: 'workbench.action.chat.configureKodyAI',
+				title: localize2('configureKodyAI', "Configure KODY AI Service..."),
 				f1: true,
-				category: EXTENSIONS_CATEGORY,
+				category: CHAT_CATEGORY,
 				precondition: ChatContextKeys.enabled
 			});
 		}
 
 		override async run(accessor: ServicesAccessor): Promise<void> {
-			const extensionsWorkbenchService = accessor.get(IExtensionsWorkbenchService);
-			extensionsWorkbenchService.openSearch(`@feature:${CopilotUsageExtensionFeatureId}`);
-		}
-	});
-
-	registerAction2(class ConfigureCopilotCompletions extends Action2 {
-
-		constructor() {
-			super({
-				id: 'workbench.action.chat.configureCodeCompletions',
-				title: localize2('configureCompletions', "Configure Inline Suggestions..."),
-				precondition: ContextKeyExpr.and(
-					ChatContextKeys.Setup.installed,
-					ChatContextKeys.Setup.disabled.negate(),
-					ChatContextKeys.Setup.untrusted.negate()
-				),
-				menu: {
-					id: MenuId.ChatTitleBarMenu,
-					group: 'f_completions',
-					order: 10,
-				}
-			});
-		}
-
-		override async run(accessor: ServicesAccessor): Promise<void> {
 			const commandService = accessor.get(ICommandService);
-			commandService.executeCommand(defaultChat.completionsMenuCommand);
+			commandService.executeCommand('kody.configureAIService');
 		}
 	});
 

@@ -91,19 +91,19 @@ import { EditorContextKeys } from '../../../../editor/common/editorContextKeys.j
 import { ICodeEditorService } from '../../../../editor/browser/services/codeEditorService.js';
 
 const defaultChat = {
-	extensionId: product.defaultChatAgent?.extensionId ?? '',
-	chatExtensionId: product.defaultChatAgent?.chatExtensionId ?? '',
-	publicCodeMatchesUrl: product.defaultChatAgent?.publicCodeMatchesUrl ?? '',
-	manageOveragesUrl: product.defaultChatAgent?.manageOverageUrl ?? '',
-	upgradePlanUrl: product.defaultChatAgent?.upgradePlanUrl ?? '',
-	provider: product.defaultChatAgent?.provider ?? { default: { id: '', name: '' }, enterprise: { id: '', name: '' }, apple: { id: '', name: '' }, google: { id: '', name: '' } },
-	providerUriSetting: product.defaultChatAgent?.providerUriSetting ?? '',
-	manageSettingsUrl: product.defaultChatAgent?.manageSettingsUrl ?? '',
-	completionsAdvancedSetting: product.defaultChatAgent?.completionsAdvancedSetting ?? '',
-	completionsRefreshTokenCommand: product.defaultChatAgent?.completionsRefreshTokenCommand ?? '',
-	chatRefreshTokenCommand: product.defaultChatAgent?.chatRefreshTokenCommand ?? '',
-	termsStatementUrl: product.defaultChatAgent?.termsStatementUrl ?? '',
-	privacyStatementUrl: product.defaultChatAgent?.privacyStatementUrl ?? ''
+	extensionId: product.defaultChatAgent?.extensionId ?? 'kody.ide',
+	chatExtensionId: product.defaultChatAgent?.chatExtensionId ?? 'kody.ide',
+	publicCodeMatchesUrl: '',
+	manageOveragesUrl: '',
+	upgradePlanUrl: '',
+	provider: { default: { id: 'kody', name: 'KODY' }, enterprise: { id: '', name: '' }, apple: { id: '', name: '' }, google: { id: '', name: '' } },
+	providerUriSetting: '',
+	manageSettingsUrl: '',
+	completionsAdvancedSetting: '',
+	completionsRefreshTokenCommand: '',
+	chatRefreshTokenCommand: '',
+	termsStatementUrl: '',
+	privacyStatementUrl: ''
 };
 
 enum ChatSetupAnonymous {
@@ -150,7 +150,7 @@ class SetupAgent extends Disposable implements IChatAgentImplementation {
 					break;
 			}
 
-			return SetupAgent.doRegisterAgent(instantiationService, chatAgentService, id, `${defaultChat.provider.default.name} Copilot` /* Do NOT change, this hides the username altogether in Chat */, true, description, location, mode, context, controller);
+			return SetupAgent.doRegisterAgent(instantiationService, chatAgentService, id, `KODY AI`, true, description, location, mode, context, controller);
 		});
 	}
 
@@ -291,10 +291,10 @@ class SetupAgent extends Disposable implements IChatAgentImplementation {
 		try {
 			await this.doForwardRequestToChat(requestModel, progress, chatService, languageModelsService, chatAgentService, chatWidgetService, languageModelToolsService);
 		} catch (error) {
-			progress({
-				kind: 'warning',
-				content: new MarkdownString(localize('copilotUnavailableWarning', "Failed to get a response. Please try again."))
-			});
+					progress({
+						kind: 'warning',
+						content: new MarkdownString(localize('kodyUnavailableWarning', "Failed to get a response. Please try again."))
+					});
 		}
 	}
 
@@ -411,14 +411,14 @@ class SetupAgent extends Disposable implements IChatAgentImplementation {
 
 		// check that tools other than setup. and internal tools are registered.
 		for (const tool of languageModelToolsService.getTools()) {
-			if (tool.id.startsWith('copilot_')) {
+			if (tool.id.startsWith('kody_') || tool.id.startsWith('copilot_')) {
 				return; // we have tools!
 			}
 		}
 
 		return Event.toPromise(Event.filter(languageModelToolsService.onDidChangeTools, () => {
 			for (const tool of languageModelToolsService.getTools()) {
-				if (tool.id.startsWith('copilot_')) {
+				if (tool.id.startsWith('kody_') || tool.id.startsWith('copilot_')) {
 					return true; // we have tools!
 				}
 			}
@@ -554,7 +554,7 @@ class SetupAgent extends Disposable implements IChatAgentImplementation {
 			return requestModel;
 		}
 
-		const toolId = toolPart.toolId.replace(/setup.tools\./, `copilot_`.toLowerCase());
+		const toolId = toolPart.toolId.replace(/setup.tools\./, `kody_`.toLowerCase());
 		const newToolPart = new ChatRequestToolPart(
 			toolPart.range,
 			toolPart.editorRange,
@@ -698,7 +698,7 @@ class ChatCodeActionsProvider {
 
 		if (generateOrModifyTitle && generateOrModifyCommand) {
 			actions.push({
-				kind: CodeActionKind.RefactorRewrite.append('copilot').value,
+				kind: CodeActionKind.RefactorRewrite.append('kody').value,
 				isAI: true,
 				title: generateOrModifyTitle,
 				command: generateOrModifyCommand,
@@ -710,7 +710,7 @@ class ChatCodeActionsProvider {
 
 			// "Fix" if there are diagnostics in the range
 			actions.push({
-				kind: CodeActionKind.QuickFix.append('copilot').value,
+				kind: CodeActionKind.QuickFix.append('kody').value,
 				isAI: true,
 				diagnostics: markers,
 				title: localize('fix', "Fix"),
@@ -719,7 +719,7 @@ class ChatCodeActionsProvider {
 
 			// "Explain" if there are diagnostics in the range
 			actions.push({
-				kind: CodeActionKind.QuickFix.append('explain').append('copilot').value,
+				kind: CodeActionKind.QuickFix.append('explain').append('kody').value,
 				isAI: true,
 				diagnostics: markers,
 				title: localize('explain', "Explain"),
@@ -1026,7 +1026,7 @@ class ChatSetup {
 		if (options?.forceAnonymous || this.telemetryService.telemetryLevel === TelemetryLevel.NONE) {
 			footer = localize({ key: 'settingsAnonymous', comment: ['{Locked="["}', '{Locked="]({1})"}', '{Locked="]({2})"}'] }, "By continuing, you agree to {0}'s [Terms]({1}) and [Privacy Statement]({2}).", defaultChat.provider.default.name, defaultChat.termsStatementUrl, defaultChat.privacyStatementUrl);
 		} else {
-			footer = localize({ key: 'settings', comment: ['{Locked="["}', '{Locked="]({1})"}', '{Locked="]({2})"}', '{Locked="]({4})"}', '{Locked="]({5})"}'] }, "By continuing, you agree to {0}'s [Terms]({1}) and [Privacy Statement]({2}). {3} Copilot may show [public code]({4}) suggestions and use your data to improve the product. You can change these [settings]({5}) anytime.", defaultChat.provider.default.name, defaultChat.termsStatementUrl, defaultChat.privacyStatementUrl, defaultChat.provider.default.name, defaultChat.publicCodeMatchesUrl, defaultChat.manageSettingsUrl);
+					footer = localize({ key: 'settings', comment: ['{Locked="["}', '{Locked="]({1})"}', '{Locked="]({2})"}'] }, "By continuing, you agree to use KODY AI service. Configure your API key in settings.", defaultChat.provider?.default?.name || 'KODY', defaultChat.termsStatementUrl || '', defaultChat.privacyStatementUrl || '');
 		}
 		element.appendChild($('p', undefined, disposables.add(this.markdownRendererService.render(new MarkdownString(footer, { isTrusted: true }))).element));
 
@@ -1162,7 +1162,7 @@ export class ChatSetupContribution extends Disposable implements IWorkbenchContr
 
 		class ChatSetupTriggerAction extends Action2 {
 
-			static CHAT_SETUP_ACTION_LABEL = localize2('triggerChatSetup', "Use AI Features with Copilot for free...");
+			static CHAT_SETUP_ACTION_LABEL = localize2('triggerChatSetup', "Configure KODY AI Service...");
 
 			constructor() {
 				super({
@@ -1308,7 +1308,7 @@ export class ChatSetupContribution extends Disposable implements IWorkbenchContr
 			constructor() {
 				super({
 					id: 'workbench.action.chat.upgradePlan',
-					title: localize2('managePlan', "Upgrade to GitHub Copilot Pro"),
+					title: localize2('managePlan', "Configure KODY AI Service"),
 					category: localize2('chat.category', 'Chat'),
 					f1: true,
 					precondition: ContextKeyExpr.and(
@@ -1364,7 +1364,7 @@ export class ChatSetupContribution extends Disposable implements IWorkbenchContr
 			constructor() {
 				super({
 					id: 'workbench.action.chat.manageOverages',
-					title: localize2('manageOverages', "Manage GitHub Copilot Overages"),
+					title: localize2('manageOverages', "Configure KODY AI Service"),
 					category: localize2('chat.category', 'Chat'),
 					f1: true,
 					precondition: ContextKeyExpr.and(
@@ -1456,11 +1456,11 @@ export class ChatSetupContribution extends Disposable implements IWorkbenchContr
 					}
 				});
 			}
-			registerGenerateCodeCommand('chat.internal.explain', 'github.copilot.chat.explain');
-			registerGenerateCodeCommand('chat.internal.fix', 'github.copilot.chat.fix');
-			registerGenerateCodeCommand('chat.internal.review', 'github.copilot.chat.review');
-			registerGenerateCodeCommand('chat.internal.generateDocs', 'github.copilot.chat.generateDocs');
-			registerGenerateCodeCommand('chat.internal.generateTests', 'github.copilot.chat.generateTests');
+					registerGenerateCodeCommand('chat.internal.explain', 'kody.ide.chat.explain');
+			registerGenerateCodeCommand('chat.internal.fix', 'kody.ide.chat.fix');
+			registerGenerateCodeCommand('chat.internal.review', 'kody.ide.chat.review');
+			registerGenerateCodeCommand('chat.internal.generateDocs', 'kody.ide.chat.generateDocs');
+			registerGenerateCodeCommand('chat.internal.generateTests', 'kody.ide.chat.generateTests');
 
 			const internalGenerateCodeContext = ContextKeyExpr.and(
 				ChatContextKeys.Setup.hidden.negate(),
@@ -2099,7 +2099,5 @@ class ChatSetupController extends Disposable {
 //#endregion
 
 function refreshTokens(commandService: ICommandService): void {
-	// ugly, but we need to signal to the extension that entitlements changed
-	commandService.executeCommand(defaultChat.completionsRefreshTokenCommand);
-	commandService.executeCommand(defaultChat.chatRefreshTokenCommand);
+	// KODY: No token refresh needed, API keys are managed via configuration
 }
