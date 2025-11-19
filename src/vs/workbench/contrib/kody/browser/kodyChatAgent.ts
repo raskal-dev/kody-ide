@@ -251,9 +251,20 @@ export class KodyChatAgent extends Disposable implements IWorkbenchContribution 
       progress([progressMessage]);
 
       // Appeler le service IA
+      let modelName = 'N/A';
+      if (aiConfig.service === 'openrouter' && aiConfig.openrouter) {
+        modelName = aiConfig.openrouter.model;
+      } else if (aiConfig.service === 'openai' && aiConfig.openai) {
+        modelName = aiConfig.openai.model;
+      } else if (aiConfig.service === 'anthropic' && aiConfig.anthropic) {
+        modelName = aiConfig.anthropic.model;
+      } else if (aiConfig.service === 'custom' && aiConfig.custom) {
+        modelName = aiConfig.custom.endpoint;
+      }
+      
       console.log('[KODY] Envoi de la requête au service IA:', {
         service: aiConfig.service,
-        model: aiConfig[aiConfig.service as keyof typeof aiConfig]?.model || 'N/A',
+        model: modelName,
         messagesCount: messages.length
       });
 
