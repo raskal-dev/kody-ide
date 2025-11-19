@@ -249,6 +249,11 @@ export const tocData: ITOCEntry<string> = {
 					settings: ['chat.*', 'inlineChat.*', 'mcp']
 				},
 				{
+					id: 'features/kody',
+					label: localize('kody', 'KODY AI'),
+					settings: ['kody.*']
+				},
+				{
 					id: 'features/issueReporter',
 					label: localize('issueReporter', 'Issue Reporter'),
 					settings: ['issueReporter.*'],
