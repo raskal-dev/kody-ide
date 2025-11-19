@@ -64,11 +64,10 @@ import { IExtension, IExtensionsWorkbenchService } from '../../extensions/common
 import { IChatAgentImplementation, IChatAgentRequest, IChatAgentResult, IChatAgentService } from '../common/chatAgents.js';
 import { ChatContextKeys } from '../common/chatContextKeys.js';
 import { ChatEntitlement, ChatEntitlementContext, ChatEntitlementRequests, ChatEntitlementService, IChatEntitlementService, isProUser } from '../../../services/chat/common/chatEntitlementService.js';
-import { ChatModel, ChatRequestModel, IChatRequestModel, IChatRequestVariableData } from '../common/chatModel.js';
+import { IChatRequestModel } from '../common/chatModel.js';
 import { ChatMode, IChatModeService } from '../common/chatModes.js';
-import { ChatRequestAgentPart, ChatRequestToolPart } from '../common/chatParserTypes.js';
+import { ChatRequestToolPart } from '../common/chatParserTypes.js';
 import { IChatProgress, IChatService } from '../common/chatService.js';
-import { IChatRequestToolEntry } from '../common/chatVariableEntries.js';
 import { ChatAgentLocation, ChatConfiguration, ChatModeKind } from '../common/constants.js';
 import { ILanguageModelsService } from '../common/languageModels.js';
 import { CHAT_CATEGORY, CHAT_OPEN_ACTION_ID, CHAT_SETUP_ACTION_ID, CHAT_SETUP_SUPPORT_ANONYMOUS_ACTION_ID } from './actions/chatActions.js';
@@ -209,7 +208,7 @@ class SetupAgent extends Disposable implements IChatAgentImplementation {
 			extensionPublisherId: nullExtensionDescription.publisher
 		}));
 
-		const agent = disposables.add(instantiationService.createInstance(SetupAgent, context, controller, location));
+		const agent = disposables.add(instantiationService.createInstance(SetupAgent, context, location));
 		disposables.add(chatAgentService.registerAgentImplementation(id, agent));
 		if (mode === ChatModeKind.Agent) {
 			chatAgentService.updateAgent(id, { themeIcon: Codicon.tools });
@@ -228,11 +227,9 @@ class SetupAgent extends Disposable implements IChatAgentImplementation {
 
 	constructor(
 		private readonly context: ChatEntitlementContext,
-		private readonly controller: Lazy<ChatSetupController>,
 		private readonly location: ChatAgentLocation,
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
 		@ILogService private readonly logService: ILogService,
-		@IConfigurationService private readonly configurationService: IConfigurationService,
 		@ITelemetryService private readonly telemetryService: ITelemetryService,
 		@IWorkbenchEnvironmentService private readonly environmentService: IWorkbenchEnvironmentService,
 		@IWorkspaceTrustManagementService private readonly workspaceTrustManagementService: IWorkspaceTrustManagementService,
@@ -453,56 +450,27 @@ class SetupAgent extends Disposable implements IChatAgentImplementation {
 		const widget = chatWidgetService.getWidgetBySessionResource(request.sessionResource);
 		const requestModel = widget?.viewModel?.model.getRequests().at(-1);
 
-		const setupListener = Event.runAndSubscribe(this.controller.value.onDidChange, (() => {
-			switch (this.controller.value.step) {
-				case ChatSetupStep.SigningIn:
-					progress({
-						kind: 'progressMessage',
-						content: new MarkdownString(localize('setupChatSignIn2', "Signing in to {0}...", ChatEntitlementRequests.providerId(this.configurationService) === defaultChat.provider.enterprise.id ? defaultChat.provider.enterprise.name : defaultChat.provider.default.name)),
-					});
-					break;
-				case ChatSetupStep.Installing:
-					progress({
-						kind: 'progressMessage',
-						content: new MarkdownString(localize('installingChat', "Getting chat ready...")),
-					});
-					break;
-			}
-		}));
+		// Pour KODY, on redirige directement vers la configuration au lieu du setup d'extension
+		progress({
+			kind: 'markdownContent',
+			content: new MarkdownString(localize('kodySetupNeeded', "**Configuration KODY AI requise**\n\nPour utiliser le chat, vous devez configurer votre clé API.\n\nUtilisez la commande **'KODY: Configure AI Service'** (Ctrl+Shift+P) pour configurer votre service IA (OpenRouter, OpenAI, Anthropic).\n\nOu cliquez sur le bouton ci-dessous pour ouvrir la configuration."))
+		});
 
-		let result: IChatSetupResult | undefined = undefined;
-		try {
-			result = await ChatSetup.getInstance(this.instantiationService, this.context, this.controller).run({
-				disableChatViewReveal: true, 																				// we are already in a chat context
-				forceAnonymous: this.chatEntitlementService.anonymous ? ChatSetupAnonymous.EnabledWithoutDialog : undefined	// only enable anonymous selectively
-			});
-		} catch (error) {
-			this.logService.error(`[chat setup] Error during setup: ${toErrorMessage(error)}`);
-		} finally {
-			setupListener.dispose();
-		}
-
-		// User has agreed to run the setup
-		if (typeof result?.success === 'boolean') {
-			if (result.success) {
-				if (result.dialogSkipped) {
-					widget?.clear(); // make room for the Chat welcome experience
-				} else if (requestModel) {
-					let newRequest = this.replaceAgentInRequestModel(requestModel, chatAgentService); 	// Replace agent part with the actual Chat agent...
-					newRequest = this.replaceToolInRequestModel(newRequest); 							// ...then replace any tool parts with the actual Chat tools
-
-					await this.forwardRequestToChat(newRequest, progress, chatService, languageModelsService, chatAgentService, chatWidgetService, languageModelToolsService);
-				}
-			} else {
+		// Vérifier si l'agent KODY est disponible
+		const kodyAgent = chatAgentService.getAgent('kody');
+		if (kodyAgent && requestModel) {
+			// Si l'agent KODY existe, on peut essayer de rediriger la requête
+			try {
+				await this.forwardRequestToChat(requestModel, progress, chatService, languageModelsService, chatAgentService, chatWidgetService, languageModelToolsService);
+			} catch (error) {
+				// Si ça échoue, c'est probablement parce que la clé API n'est pas configurée
 				progress({
 					kind: 'warning',
-					content: new MarkdownString(localize('chatSetupError', "Chat setup failed."))
+					content: SetupAgent.SETUP_NEEDED_MESSAGE
 				});
 			}
-		}
-
-		// User has cancelled the setup
-		else {
+		} else {
+			// Si l'agent KODY n'est pas encore disponible, afficher le message de configuration
 			progress({
 				kind: 'markdownContent',
 				content: this.workspaceTrustManagementService.isWorkspaceTrusted() ? SetupAgent.SETUP_NEEDED_MESSAGE : SetupAgent.TRUST_NEEDED_MESSAGE
@@ -510,92 +478,6 @@ class SetupAgent extends Disposable implements IChatAgentImplementation {
 		}
 
 		return {};
-	}
-
-	private replaceAgentInRequestModel(requestModel: IChatRequestModel, chatAgentService: IChatAgentService): IChatRequestModel {
-		const agentPart = requestModel.message.parts.find((r): r is ChatRequestAgentPart => r instanceof ChatRequestAgentPart);
-		if (!agentPart) {
-			return requestModel;
-		}
-
-		const agentId = agentPart.agent.id.replace(/setup\./, `${defaultChat.extensionId}.`.toLowerCase());
-		const githubAgent = chatAgentService.getAgent(agentId);
-		if (!githubAgent) {
-			return requestModel;
-		}
-
-		const newAgentPart = new ChatRequestAgentPart(agentPart.range, agentPart.editorRange, githubAgent);
-
-		return new ChatRequestModel({
-			session: requestModel.session as ChatModel,
-			message: {
-				parts: requestModel.message.parts.map(part => {
-					if (part instanceof ChatRequestAgentPart) {
-						return newAgentPart;
-					}
-					return part;
-				}),
-				text: requestModel.message.text
-			},
-			variableData: requestModel.variableData,
-			timestamp: Date.now(),
-			attempt: requestModel.attempt,
-			modeInfo: requestModel.modeInfo,
-			confirmation: requestModel.confirmation,
-			locationData: requestModel.locationData,
-			attachedContext: requestModel.attachedContext,
-			isCompleteAddedRequest: requestModel.isCompleteAddedRequest,
-		});
-	}
-
-	private replaceToolInRequestModel(requestModel: IChatRequestModel): IChatRequestModel {
-		const toolPart = requestModel.message.parts.find((r): r is ChatRequestToolPart => r instanceof ChatRequestToolPart);
-		if (!toolPart) {
-			return requestModel;
-		}
-
-		const toolId = toolPart.toolId.replace(/setup.tools\./, `kody_`.toLowerCase());
-		const newToolPart = new ChatRequestToolPart(
-			toolPart.range,
-			toolPart.editorRange,
-			toolPart.toolName,
-			toolId,
-			toolPart.displayName,
-			toolPart.icon
-		);
-
-		const chatRequestToolEntry: IChatRequestToolEntry = {
-			id: toolId,
-			name: 'new',
-			range: toolPart.range,
-			kind: 'tool',
-			value: undefined
-		};
-
-		const variableData: IChatRequestVariableData = {
-			variables: [chatRequestToolEntry]
-		};
-
-		return new ChatRequestModel({
-			session: requestModel.session as ChatModel,
-			message: {
-				parts: requestModel.message.parts.map(part => {
-					if (part instanceof ChatRequestToolPart) {
-						return newToolPart;
-					}
-					return part;
-				}),
-				text: requestModel.message.text
-			},
-			variableData: variableData,
-			timestamp: Date.now(),
-			attempt: requestModel.attempt,
-			modeInfo: requestModel.modeInfo,
-			confirmation: requestModel.confirmation,
-			locationData: requestModel.locationData,
-			attachedContext: [chatRequestToolEntry],
-			isCompleteAddedRequest: requestModel.isCompleteAddedRequest,
-		});
 	}
 }
 

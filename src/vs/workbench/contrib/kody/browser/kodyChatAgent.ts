@@ -16,6 +16,7 @@ import { AIMessage } from '../common/types.js';
 import { IChatProgress, IChatMarkdownContent } from '../../chat/common/chatService.js';
 import { ChatAgentLocation, ChatModeKind } from '../../chat/common/constants.js';
 import { ExtensionIdentifier } from '../../../../platform/extensions/common/extensions.js';
+import { MarkdownString } from '../../../../base/common/htmlContent.js';
 
 export class KodyChatAgent extends Disposable implements IWorkbenchContribution {
   static readonly ID = 'workbench.contrib.kodyChatAgent';
@@ -46,6 +47,7 @@ export class KodyChatAgent extends Disposable implements IWorkbenchContribution 
       disambiguation: [],
       metadata: {
         isSticky: false,
+        helpTextPrefix: new MarkdownString(localize('kody.chat.helpText', "**KODY AI** - Chat avec OpenRouter, OpenAI ou Anthropic\n\nConfigurez votre clé API via la commande 'KODY: Configure AI Service' pour commencer.")),
       },
       extensionId: new ExtensionIdentifier('kody.ide'),
       extensionVersion: undefined,
