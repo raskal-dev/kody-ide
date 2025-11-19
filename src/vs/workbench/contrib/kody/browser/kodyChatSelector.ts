@@ -5,11 +5,11 @@
 
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { IConfigurationService, ConfigurationTarget } from '../../../../platform/configuration/common/configuration.js';
-import { ISecretStorageService } from '../../../../platform/secrets/common/secrets.js';
 import { IContextViewService } from '../../../../platform/contextview/browser/contextView.js';
+import { getSelectBoxStyles } from '../../../../platform/theme/browser/defaultStyles.js';
 import { localize } from '../../../../nls.js';
 import * as dom from '../../../../base/browser/dom.js';
-import { SelectBox } from '../../../../base/browser/ui/selectBox/selectBox.js';
+import { SelectBox, ISelectOptionItem } from '../../../../base/browser/ui/selectBox/selectBox.js';
 import { ISelectBoxOptions } from '../../../../base/browser/ui/selectBox/selectBox.js';
 import { AIService } from '../common/types.js';
 
@@ -25,7 +25,6 @@ export class KodyChatSelector extends Disposable {
   constructor(
     private readonly parent: HTMLElement,
     @IConfigurationService private readonly configurationService: IConfigurationService,
-    @ISecretStorageService private readonly secretStorage: ISecretStorageService,
     @IContextViewService private readonly contextViewService: IContextViewService
   ) {
     super();
@@ -68,16 +67,18 @@ export class KodyChatSelector extends Disposable {
     ];
 
     const serviceSelectContainer = $('.kody-service-select');
+    const serviceSelectItems: ISelectOptionItem[] = serviceItems.map(item => ({ text: item.text }));
+    const selectBoxStyles = getSelectBoxStyles({});
     this.serviceSelectBox = new SelectBox(
-      serviceItems.map(item => item.text),
+      serviceSelectItems,
       0,
       this.contextViewService,
-      undefined,
+      selectBoxStyles,
       serviceOptions
     );
 
     this.serviceSelectBox.render(serviceSelectContainer);
-    this.serviceSelectBox.setOptions(serviceItems.map(item => item.text), 0);
+    this.serviceSelectBox.setOptions(serviceSelectItems, 0);
     this.serviceContainer.appendChild(serviceSelectContainer);
 
     // Écouter les changements de service
@@ -103,12 +104,12 @@ export class KodyChatSelector extends Disposable {
 
     // Sélecteur de modèle
     const modelOptions: ISelectBoxOptions = {
-      ariaLabel: localize('kody.chat.model.ariaLabel', 'Sélectionner le modèle'),
-      optionsAsChildren: false
+      ariaLabel: localize('kody.chat.model.ariaLabel', 'Sélectionner le modèle')
     };
 
     const modelSelectContainer = $('.kody-model-select');
-    this.modelSelectBox = new SelectBox([], 0, this.contextViewService, undefined, modelOptions);
+    const modelSelectBoxStyles = getSelectBoxStyles({});
+    this.modelSelectBox = new SelectBox([], 0, this.contextViewService, modelSelectBoxStyles, modelOptions);
     this.modelSelectBox.render(modelSelectContainer);
     this.modelContainer.appendChild(modelSelectContainer);
 
@@ -185,9 +186,9 @@ export class KodyChatSelector extends Disposable {
     }
 
     // Mettre à jour le sélecteur de modèle
-    const modelTexts = modelItems.map(item => item.text);
+    const modelSelectItems: ISelectOptionItem[] = modelItems.map(item => ({ text: item.text }));
     const currentIndex = modelItems.findIndex(item => item.value === currentModel);
-    this.modelSelectBox.setOptions(modelTexts, currentIndex >= 0 ? currentIndex : 0);
+    this.modelSelectBox.setOptions(modelSelectItems, currentIndex >= 0 ? currentIndex : 0);
 
     // Désenregistrer l'ancien listener et en créer un nouveau
     const modelListener = this.modelSelectBox.onDidSelect(e => {
@@ -205,7 +206,7 @@ export class KodyChatSelector extends Disposable {
     this._register(modelListener);
   }
 
-  public dispose(): void {
+  public override dispose(): void {
     if (this.serviceSelectBox) {
       this.serviceSelectBox.dispose();
     }
