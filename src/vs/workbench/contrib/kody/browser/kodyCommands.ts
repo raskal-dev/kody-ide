@@ -14,7 +14,7 @@ import { IWorkspaceContextService } from '../../../../platform/workspace/common/
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { IQuickInputService, IQuickPickItem } from '../../../../platform/quickinput/common/quickInput.js';
 import { ConfigManager } from './configManager.adapted.js';
-import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
+import { IConfigurationService, ConfigurationTarget } from '../../../../platform/configuration/common/configuration.js';
 import { ISecretStorageService } from '../../../../platform/secrets/common/secrets.js';
 import { AIService } from '../common/types.js';
 
@@ -112,7 +112,7 @@ export class KodyCommands extends Disposable implements IWorkbenchContribution {
       // 4. Configurer le service par défaut si nécessaire
       const currentService = this.configurationService.getValue<AIService>('kody.ai.service');
       if (currentService !== selectedService) {
-        await this.configurationService.updateValue('kody.ai.service', selectedService);
+        await this.configurationService.updateValue('kody.ai.service', selectedService, ConfigurationTarget.USER);
       }
 
       this.notificationService.info(`✅ Clé API ${servicePick.label} configurée avec succès !`);
@@ -127,7 +127,7 @@ export class KodyCommands extends Disposable implements IWorkbenchContribution {
         });
 
         if (endpoint) {
-          await this.configurationService.updateValue('kody.ai.custom.endpoint', endpoint);
+          await this.configurationService.updateValue('kody.ai.custom.endpoint', endpoint, ConfigurationTarget.USER);
         }
       }
 
@@ -185,7 +185,7 @@ export class KodyCommands extends Disposable implements IWorkbenchContribution {
 
     // Changer le service
     try {
-      await this.configurationService.updateValue('kody.ai.service', selectedService);
+      await this.configurationService.updateValue('kody.ai.service', selectedService, ConfigurationTarget.USER);
       this.notificationService.info(`✅ Service IA changé vers ${servicePick.label}`);
     } catch (error: any) {
       this.notificationService.error(`Erreur lors du changement de service: ${error.message}`);
@@ -271,7 +271,7 @@ export class KodyCommands extends Disposable implements IWorkbenchContribution {
     // Sauvegarder le modèle
     try {
       const configKey = `kody.ai.${currentService}.model` as 'kody.ai.openrouter.model' | 'kody.ai.openai.model' | 'kody.ai.anthropic.model';
-      await this.configurationService.updateValue(configKey, selectedModel);
+      await this.configurationService.updateValue(configKey, selectedModel, ConfigurationTarget.USER);
       this.notificationService.info(`✅ Modèle changé vers ${selectedModel}`);
     } catch (error: any) {
       this.notificationService.error(`Erreur lors du changement de modèle: ${error.message}`);

@@ -28,7 +28,11 @@ export class KodyChatAgent extends Disposable implements IWorkbenchContribution 
   ) {
     super();
     this.registerAgent();
-    this.updateAgentDescription();
+    
+    // Attendre un peu avant de mettre à jour la description pour éviter les erreurs au démarrage
+    setTimeout(() => {
+      this.updateAgentDescription();
+    }, 1000);
     
     // Écouter les changements de configuration pour mettre à jour la description
     this._register(this.configurationService.onDidChangeConfiguration(e => {
@@ -36,7 +40,10 @@ export class KodyChatAgent extends Disposable implements IWorkbenchContribution 
           e.affectsConfiguration('kody.ai.openrouter.model') ||
           e.affectsConfiguration('kody.ai.openai.model') ||
           e.affectsConfiguration('kody.ai.anthropic.model')) {
-        this.updateAgentDescription();
+        // Délai pour éviter les mises à jour trop rapides
+        setTimeout(() => {
+          this.updateAgentDescription();
+        }, 100);
       }
     }));
   }
@@ -64,23 +71,32 @@ export class KodyChatAgent extends Disposable implements IWorkbenchContribution 
   }
 
   private updateAgentDescription(): void {
-    const { service, model } = this.getCurrentServiceAndModel();
-    const serviceNames: Record<string, string> = {
-      'openrouter': 'OpenRouter',
-      'openai': 'OpenAI',
-      'anthropic': 'Anthropic',
-      'custom': 'Custom'
-    };
-    
-    const serviceName = serviceNames[service] || service;
-    const shortModel = model.split('/').pop() || model;
-    
-    const helpText = localize('kody.chat.helpText', "**KODY AI** - {0} ({1})\n\nUtilisez les commandes 'KODY: Changer le service IA' ou 'KODY: Changer le modèle' pour modifier la configuration.", serviceName, shortModel);
-    
-    // Mettre à jour uniquement les métadonnées (helpTextPrefix)
-    this.chatAgentService.updateAgent('kody', {
-      helpTextPrefix: new MarkdownString(helpText),
-    });
+    try {
+      const { service, model } = this.getCurrentServiceAndModel();
+      const serviceNames: Record<string, string> = {
+        'openrouter': 'OpenRouter',
+        'openai': 'OpenAI',
+        'anthropic': 'Anthropic',
+        'custom': 'Custom'
+      };
+      
+      const serviceName = serviceNames[service] || service;
+      const shortModel = model.split('/').pop() || model;
+      
+      const helpText = localize('kody.chat.helpText', "**KODY AI** - {0} ({1})\n\nUtilisez les commandes 'KODY: Changer le service IA' ou 'KODY: Changer le modèle' pour modifier la configuration.", serviceName, shortModel);
+      
+      // Vérifier que l'agent existe avant de le mettre à jour
+      const agent = this.chatAgentService.getAgent('kody');
+      if (agent) {
+        // Mettre à jour uniquement les métadonnées (helpTextPrefix)
+        this.chatAgentService.updateAgent('kody', {
+          helpTextPrefix: new MarkdownString(helpText),
+        });
+      }
+    } catch (error: any) {
+      // Ignorer les erreurs silencieusement pour éviter de casser l'IDE
+      console.error('[KODY] Erreur lors de la mise à jour de la description:', error);
+    }
   }
 
   private registerAgent(): void {
