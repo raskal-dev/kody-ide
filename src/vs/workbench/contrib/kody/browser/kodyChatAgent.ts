@@ -161,12 +161,21 @@ export class KodyChatAgent extends Disposable implements IWorkbenchContribution 
       const configManager = ConfigManager.getInstance(this.configurationService, this.secretStorage);
       const aiConfig = await configManager.getAIConfig();
 
+      console.log('[KODY] Configuration récupérée:', {
+        service: aiConfig.service,
+        hasOpenRouter: !!aiConfig.openrouter?.apiKey,
+        hasOpenAI: !!aiConfig.openai?.apiKey,
+        hasAnthropic: !!aiConfig.anthropic?.apiKey,
+        hasCustom: !!aiConfig.custom?.apiKey
+      });
+
       // Vérifier si une clé API est configurée
       const hasApiKey = await configManager.hasAPIKey(aiConfig.service);
       if (!hasApiKey) {
+        console.error('[KODY] Aucune clé API trouvée pour le service:', aiConfig.service);
         return {
           errorDetails: {
-            message: localize('kody.chat.noApiKey', 'Aucune clé API configurée. Utilisez la commande "KODY: Configure AI Service" pour configurer votre clé API.'),
+            message: localize('kody.chat.noApiKey', 'Aucune clé API configurée pour {0}. Utilisez la commande "KODY: Configure AI Service" pour configurer votre clé API.', aiConfig.service),
             responseIsIncomplete: false,
             responseIsFiltered: false
           }
@@ -175,12 +184,24 @@ export class KodyChatAgent extends Disposable implements IWorkbenchContribution 
 
       // Initialiser le service IA
       const aiServiceProvider = new AIServiceProvider();
-      await aiServiceProvider.initialize(aiConfig);
-
-      if (!aiServiceProvider.isReady()) {
+      try {
+        await aiServiceProvider.initialize(aiConfig);
+      } catch (initError: any) {
+        console.error('[KODY] Erreur lors de l\'initialisation du service:', initError);
         return {
           errorDetails: {
-            message: localize('kody.chat.serviceNotReady', 'Service IA non prêt. Vérifiez votre configuration.'),
+            message: localize('kody.chat.initError', 'Erreur lors de l\'initialisation du service IA: {0}', initError.message || initError.toString()),
+            responseIsIncomplete: false,
+            responseIsFiltered: false
+          }
+        };
+      }
+
+      if (!aiServiceProvider.isReady()) {
+        console.error('[KODY] Service IA non prêt après initialisation');
+        return {
+          errorDetails: {
+            message: localize('kody.chat.serviceNotReady', 'Service IA non prêt. Vérifiez votre configuration et votre clé API.'),
             responseIsIncomplete: false,
             responseIsFiltered: false
           }
@@ -230,13 +251,24 @@ export class KodyChatAgent extends Disposable implements IWorkbenchContribution 
       progress([progressMessage]);
 
       // Appeler le service IA
+      console.log('[KODY] Envoi de la requête au service IA:', {
+        service: aiConfig.service,
+        model: aiConfig[aiConfig.service as keyof typeof aiConfig]?.model || 'N/A',
+        messagesCount: messages.length
+      });
+
       const response = await aiServiceProvider.chat(messages);
+
+      console.log('[KODY] Réponse reçue:', {
+        model: response.model,
+        contentLength: response.content?.length || 0
+      });
 
       // Envoyer la réponse via progress
       const responseContent: IChatMarkdownContent = {
         kind: 'markdownContent',
         content: {
-          value: response.content
+          value: response.content || localize('kody.chat.emptyResponse', 'Réponse vide du service IA')
         }
       };
       progress([responseContent]);
@@ -250,9 +282,11 @@ export class KodyChatAgent extends Disposable implements IWorkbenchContribution 
         }
       };
     } catch (error: any) {
+      console.error('[KODY] Erreur dans invokeAgent:', error);
+      const errorMessage = error.message || error.toString() || localize('kody.chat.error', 'Erreur lors de l\'appel au service IA');
       return {
         errorDetails: {
-          message: error.message || localize('kody.chat.error', 'Erreur lors de l\'appel au service IA'),
+          message: errorMessage,
           responseIsIncomplete: false,
           responseIsFiltered: false
         }

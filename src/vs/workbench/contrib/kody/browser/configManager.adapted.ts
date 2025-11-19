@@ -36,28 +36,56 @@ export class ConfigManager {
     // Récupération des clés API depuis le secret storage
     switch (service) {
       case 'openrouter':
+        const openrouterApiKey = await this.secretStorage.get('kody.openrouter.apiKey');
+        const openrouterModel = this.configurationService.getValue<string>('kody.ai.openrouter.model') || 'google/gemini-flash-1.5-8b';
         aiConfig.openrouter = {
-          apiKey: (await this.secretStorage.get('kody.openrouter.apiKey')) || '',
-          model: this.configurationService.getValue<string>('kody.ai.openrouter.model') || 'openai/gpt-4-turbo',
+          apiKey: openrouterApiKey || '',
+          model: openrouterModel,
         };
+        console.log('[KODY ConfigManager] OpenRouter config:', {
+          hasApiKey: !!openrouterApiKey,
+          apiKeyLength: openrouterApiKey?.length || 0,
+          model: openrouterModel
+        });
         break;
       case 'openai':
+        const openaiApiKey = await this.secretStorage.get('kody.openai.apiKey');
+        const openaiModel = this.configurationService.getValue<string>('kody.ai.openai.model') || 'gpt-4-turbo-preview';
         aiConfig.openai = {
-          apiKey: (await this.secretStorage.get('kody.openai.apiKey')) || '',
-          model: this.configurationService.getValue<string>('kody.ai.openai.model') || 'gpt-4-turbo-preview',
+          apiKey: openaiApiKey || '',
+          model: openaiModel,
         };
+        console.log('[KODY ConfigManager] OpenAI config:', {
+          hasApiKey: !!openaiApiKey,
+          apiKeyLength: openaiApiKey?.length || 0,
+          model: openaiModel
+        });
         break;
       case 'anthropic':
+        const anthropicApiKey = await this.secretStorage.get('kody.anthropic.apiKey');
+        const anthropicModel = this.configurationService.getValue<string>('kody.ai.anthropic.model') || 'claude-3-opus-20240229';
         aiConfig.anthropic = {
-          apiKey: (await this.secretStorage.get('kody.anthropic.apiKey')) || '',
-          model: this.configurationService.getValue<string>('kody.ai.anthropic.model') || 'claude-3-opus-20240229',
+          apiKey: anthropicApiKey || '',
+          model: anthropicModel,
         };
+        console.log('[KODY ConfigManager] Anthropic config:', {
+          hasApiKey: !!anthropicApiKey,
+          apiKeyLength: anthropicApiKey?.length || 0,
+          model: anthropicModel
+        });
         break;
       case 'custom':
+        const customApiKey = await this.secretStorage.get('kody.custom.apiKey');
+        const customEndpoint = this.configurationService.getValue<string>('kody.ai.custom.endpoint') || '';
         aiConfig.custom = {
-          endpoint: this.configurationService.getValue<string>('kody.ai.custom.endpoint') || '',
-          apiKey: (await this.secretStorage.get('kody.custom.apiKey')) || '',
+          endpoint: customEndpoint,
+          apiKey: customApiKey || '',
         };
+        console.log('[KODY ConfigManager] Custom config:', {
+          hasApiKey: !!customApiKey,
+          apiKeyLength: customApiKey?.length || 0,
+          endpoint: customEndpoint
+        });
         break;
     }
 
