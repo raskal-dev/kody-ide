@@ -149,8 +149,7 @@ class SetupAgent extends Disposable implements IChatAgentImplementation {
 					break;
 			}
 
-			return SetupAgent.doRegisterAgent(instantiat
-				ionService, chatAgentService, id, `KODY AI`, true, description, location, mode, context, controller);
+			return SetupAgent.doRegisterAgent(instantiationService, chatAgentService, id, `KODY AI`, true, description, location, mode, context, controller);
 		});
 	}
 

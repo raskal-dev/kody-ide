@@ -102,6 +102,7 @@ import { ChatSessionPickerActionItem, IChatSessionPickerDelegate } from './chatS
 import { IChatViewState } from './chatWidget.js';
 import { ChatImplicitContext } from './contrib/chatImplicitContext.js';
 import { ChatRelatedFiles } from './contrib/chatInputRelatedFilesContrib.js';
+import { KodyChatSelector } from '../../kody/browser/kodyChatSelector.js';
 import { resizeImage } from './imageUtils.js';
 import { IModelPickerDelegate, ModelPickerActionItem } from './modelPicker/modelPickerActionItem.js';
 import { IModePickerDelegate, ModePickerActionItem } from './modelPicker/modePickerActionItem.js';
@@ -1558,6 +1559,9 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 				this._onDidChangeHeight.fire();
 			}
 		}));
+
+		// Ajouter le sélecteur KODY AI après les toolbars
+		this._register(this.instantiationService.createInstance(KodyChatSelector, inputContainer));
 	}
 
 	public toggleChatInputOverlay(editing: boolean): void {
