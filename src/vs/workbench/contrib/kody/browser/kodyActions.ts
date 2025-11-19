@@ -4,11 +4,15 @@
  */
 
 import { IWorkbenchContribution } from '../../../common/contributions.js';
-import { MenuRegistry, MenuId } from '../../../../platform/actions/common/actions.js';
+import { MenuRegistry, MenuId, registerAction2, Action2 } from '../../../../platform/actions/common/actions.js';
 import { KeyMod, KeyCode } from '../../../../base/common/keyCodes.js';
 import { KeybindingsRegistry, KeybindingWeight } from '../../../../platform/keybinding/common/keybindingsRegistry.js';
-import { localize } from '../../../../nls.js';
+import { localize, localize2 } from '../../../../nls.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
+import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
+import { ICommandService } from '../../../../platform/commands/common/commands.js';
+import { ContextKeyExpr } from '../../../../platform/contextkey/common/contextkey.js';
+import { ChatContextKeys } from '../../chat/common/chatContextKeys.js';
 
 export class KodyActions extends Disposable implements IWorkbenchContribution {
   static readonly ID = 'workbench.contrib.kodyActions';
@@ -48,6 +52,20 @@ export class KodyActions extends Disposable implements IWorkbenchContribution {
       }
     });
 
+    MenuRegistry.appendMenuItem(MenuId.CommandPalette, {
+      command: {
+        id: 'kody.changeAIService',
+        title: localize('kody.changeAIService', 'KODY: Changer le service IA')
+      }
+    });
+
+    MenuRegistry.appendMenuItem(MenuId.CommandPalette, {
+      command: {
+        id: 'kody.changeAIModel',
+        title: localize('kody.changeAIModel', 'KODY: Changer le modèle IA')
+      }
+    });
+
     // Ajouter au menu View
     MenuRegistry.appendMenuItem(MenuId.MenubarViewMenu, {
       group: '1_panels',
@@ -56,6 +74,55 @@ export class KodyActions extends Disposable implements IWorkbenchContribution {
         title: localize('kody.viewAIPanel', 'KODY AI')
       },
       order: 10
+    });
+
+    // Ajouter au menu du chat (ChatTitleBarMenu)
+    MenuRegistry.appendMenuItem(MenuId.ChatTitleBarMenu, {
+      command: {
+        id: 'kody.changeAIService',
+        title: localize2('kody.changeAIService', 'Changer le service IA...')
+      },
+      group: 'z_kody',
+      order: 1,
+      when: ContextKeyExpr.and(
+        ChatContextKeys.enabled,
+        ContextKeyExpr.or(
+          ChatContextKeys.Setup.installed.negate(),
+          ChatContextKeys.Setup.disabled.negate()
+        )
+      )
+    });
+
+    MenuRegistry.appendMenuItem(MenuId.ChatTitleBarMenu, {
+      command: {
+        id: 'kody.changeAIModel',
+        title: localize2('kody.changeAIModel', 'Changer le modèle...')
+      },
+      group: 'z_kody',
+      order: 2,
+      when: ContextKeyExpr.and(
+        ChatContextKeys.enabled,
+        ContextKeyExpr.or(
+          ChatContextKeys.Setup.installed.negate(),
+          ChatContextKeys.Setup.disabled.negate()
+        )
+      )
+    });
+
+    MenuRegistry.appendMenuItem(MenuId.ChatTitleBarMenu, {
+      command: {
+        id: 'kody.configureAIService',
+        title: localize2('kody.configureAIService', 'Configurer KODY AI...')
+      },
+      group: 'z_kody',
+      order: 3,
+      when: ContextKeyExpr.and(
+        ChatContextKeys.enabled,
+        ContextKeyExpr.or(
+          ChatContextKeys.Setup.installed.negate(),
+          ChatContextKeys.Setup.disabled.negate()
+        )
+      )
     });
 
     // Raccourcis clavier
@@ -67,4 +134,37 @@ export class KodyActions extends Disposable implements IWorkbenchContribution {
     });
   }
 }
+
+// Enregistrer les actions pour les commandes
+registerAction2(class ChangeAIServiceAction extends Action2 {
+  constructor() {
+    super({
+      id: 'kody.changeAIService',
+      title: localize2('kody.changeAIService', 'KODY: Changer le service IA'),
+      category: localize2('kody.category', 'KODY'),
+      f1: true
+    });
+  }
+
+  async run(accessor: ServicesAccessor): Promise<void> {
+    const commandService = accessor.get(ICommandService);
+    await commandService.executeCommand('kody.changeAIService');
+  }
+});
+
+registerAction2(class ChangeAIModelAction extends Action2 {
+  constructor() {
+    super({
+      id: 'kody.changeAIModel',
+      title: localize2('kody.changeAIModel', 'KODY: Changer le modèle IA'),
+      category: localize2('kody.category', 'KODY'),
+      f1: true
+    });
+  }
+
+  async run(accessor: ServicesAccessor): Promise<void> {
+    const commandService = accessor.get(ICommandService);
+    await commandService.executeCommand('kody.changeAIModel');
+  }
+});
 
